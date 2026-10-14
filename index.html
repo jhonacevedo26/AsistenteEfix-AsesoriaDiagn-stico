@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>¡Tu premio te espera!</title>
+<style>
+  :root{
+    --navy:#0b2545; --accent:#13a89e; --gold:#f5b400; --bg:#f4f7fa; --card:#ffffff;
+    --text:#1c2b3a; --muted:#6b7b8c; --red:#d64545; --line:#cfd8e1;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.4}
+  header{background:linear-gradient(135deg,var(--navy),#14407a);color:#fff;padding:22px 16px 20px;text-align:center}
+  header h1{margin:0 0 6px;font-size:1.45rem}
+  header p{margin:0;font-size:.98rem;opacity:.92}
+  main{max-width:480px;margin:0 auto;padding:14px}
+  .card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(11,37,69,.08)}
+  label.l{display:block;font-weight:700;font-size:.92rem;margin:14px 0 6px;color:var(--navy)}
+  label.l:first-child{margin-top:0}
+  input[type=text],input[type=tel]{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;font-size:1.05rem;background:#fff}
+  input[type=text]:focus,input[type=tel]:focus{outline:none;border-color:var(--accent)}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+  .choices{display:grid;gap:8px}
+  .choice{display:block;cursor:pointer}
+  .choice input{position:absolute;opacity:0;width:1px;height:1px}
+  .choice span{display:block;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;font-size:.97rem;background:#fff}
+  .choice input:checked + span{border-color:var(--accent);background:#e9f8f6;font-weight:700}
+  .choice input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+  .consent{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:.8rem;color:var(--muted);cursor:pointer}
+  .consent input{width:22px;height:22px;flex:none;margin-top:1px}
+  .consent a{color:var(--accent)}
+  .btn{display:block;width:100%;padding:16px;border:0;border-radius:14px;background:var(--gold);color:#3b2a00;font:inherit;font-weight:800;font-size:1.1rem;margin-top:18px;cursor:pointer}
+  .btn:disabled{opacity:.55}
+  .err{color:var(--red);font-size:.85rem;margin-top:10px;min-height:1.1em;text-align:center;font-weight:600}
+  .field-err{border-color:var(--red)!important}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .hidden{display:none}
+  .ok{text-align:center;padding:26px 18px}
+  .ok .big{font-size:3.2rem;line-height:1}
+  .ok h2{margin:10px 0 6px;color:var(--navy);font-size:1.4rem}
+  .ok p{margin:6px 0;color:var(--muted)}
+  .ticket{margin:18px 0 8px;padding:16px;border:2px dashed var(--gold);border-radius:14px;background:#fffbea}
+  .ticket .n{font-weight:800;color:var(--navy);font-size:1.15rem}
+  .ticket .c{font-size:1.6rem;font-weight:800;letter-spacing:3px;color:var(--navy);margin-top:6px}
+  .ticket .m{font-size:.85rem;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>¡Tu premio te espera! 🎁</h1>
+  <p>Responde 4 datos y obtén una asesoría profesional en finanzas e inversión</p>
+</header>
+
+<main>
+  <!-- FORMULARIO -->
+  <section id="formCard" class="card">
+    <form id="f" novalidate autocomplete="on">
+      <label class="l" for="nombre">Nombre completo</label>
+      <input id="nombre" type="text" autocomplete="name" maxlength="100" placeholder="Tu nombre y apellido">
+
+      <label class="l" for="whatsapp">WhatsApp (con indicativo)</label>
+      <input id="whatsapp" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="Ej: 300 123 4567">
+
+      <label class="l" id="lblInteres">¿Qué te gustaría revisar con un consultor?</label>
+      <div class="choices" role="radiogroup" aria-labelledby="lblInteres" id="choices">
+        <label class="choice"><input type="radio" name="interes" value="ahorro"><span>📈 Ahorrar e invertir mejor</span></label>
+        <label class="choice"><input type="radio" name="interes" value="pension"><span>🏦 Revisar mi pensión</span></label>
+        <label class="choice"><input type="radio" name="interes" value="patrimonio"><span>🛡️ Proteger mi patrimonio y disminuir impuestos</span></label>
+        <label class="choice"><input type="radio" name="interes" value="educacion"><span>🎓 Ahorrar para la educación de mis hijos</span></label>
+        <label class="choice"><input type="radio" name="interes" value="otro"><span>💬 Otro / solo quiero información</span></label>
+      </div>
+
+      <input id="hp_ref" class="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <label class="consent">
+        <input id="consent" type="checkbox">
+        <span id="consentTxt"></span>
+      </label>
+
+      <div id="err" class="err" role="alert"></div>
+      <button id="btn" class="btn" type="submit">Quiero participar 🎁</button>
+    </form>
+  </section>
+
+  <!-- CONFIRMACIÓN -->
+  <section id="okCard" class="card ok hidden">
+    <div class="big">🎉</div>
+    <h2 id="okTitulo">¡Listo!</h2>
+    <p>Ya estás participando.</p>
+    <div class="ticket">
+      <div class="n" id="tNombre"></div>
+      <div class="c" id="tCodigo"></div>
+      <div class="m" id="tMsg"></div>
+    </div>
+    <p id="tContacto"></p>
+  </section>
+</main>
+
+<script>
+/* ====== CONFIGURACIÓN (lo único que debes editar) ====== */
+const CONFIG = {
+  URL_SCRIPT: "PEGA_AQUI_LA_URL_DE_TU_APPS_SCRIPT",   // termina en /exec
+  POLITICA_URL: "",                                    // enlace a tu política de datos (si está vacío, no se muestra el enlace)
+  CONSENT_QUIEN: "un consultor",                       // "...para que [un consultor] me contacte con información financiera"
+  MENSAJE_FINAL: "Muestra esta pantalla en el stand para reclamar tu detalle."
+};
+/* ======================================================= */
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const evento = (params.get("evento") || "").slice(0,60);
+const t0 = Date.now();
+const KEY = "premio_pendientes_v1";
+const enCurso = new Set();
+
+/* Texto de autorización */
+(function(){
+  const t = $("consentTxt");
+  t.appendChild(document.createTextNode("Autorizo el tratamiento de mis datos personales para que " + CONFIG.CONSENT_QUIEN + " me contacte con información financiera. "));
+  if (CONFIG.POLITICA_URL){
+    const a = document.createElement("a");
+    a.href = CONFIG.POLITICA_URL; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Ver política de datos";
+    t.appendChild(a);
+  }
+})();
+
+/* WhatsApp: solo dígitos; si son 10 y empiezan por 3 (celular colombiano) se agrega 57 */
+function normalizarWA(v){
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.length === 10 && d[0] === "3") d = "57" + d;
+  return (d.length >= 8 && d.length <= 15) ? d : "";
+}
+
+function nuevoId(){
+  try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){}
+  return (Math.random().toString(16).slice(2) + Date.now().toString(16) + Math.random().toString(16).slice(2)).slice(0,32);
+}
+const codigoDe = id => id.replace(/[^A-Za-z0-9]/g, "").slice(0,8).toUpperCase();
+
+/* ---- Cola de envíos: nunca se pierde un lead aunque Google esté saturado ---- */
+function leerCola(){ try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch(e){ return []; } }
+function guardarCola(c){ try { localStorage.setItem(KEY, JSON.stringify(c)); } catch(e){} }
+function agregarACola(p){ const c = leerCola(); c.push(p); guardarCola(c); }
+function quitarDeCola(id){ guardarCola(leerCola().filter(x => x.id !== id)); }
+
+function enviar(p, intento){
+  intento = intento || 0;
+  if (!CONFIG.URL_SCRIPT || CONFIG.URL_SCRIPT.startsWith("PEGA_AQUI")) return;
+  if (intento === 0 && enCurso.has(p.id)) return;
+  enCurso.add(p.id);
+  fetch(CONFIG.URL_SCRIPT, { method:"POST", body: JSON.stringify(p) })
+    .then(r => r.text())
+    .then(t => {
+      if (t === "ok" || t === "datos-invalidos" || t === "sin-consentimiento"){
+        quitarDeCola(p.id); enCurso.delete(p.id); console.log("Envio:", t);
+      } else { throw new Error(t); }
+    })
+    .catch(err => {
+      console.log("Reintentando envio:", String(err));
+      const espera = Math.min(60000, 2000 * Math.pow(2, intento)) + Math.random() * 3000;
+      setTimeout(() => enviar(p, intento + 1), espera);
+    });
+}
+
+/* Al abrir la página, reenvía lo que haya quedado pendiente en este celular */
+leerCola().forEach(p => enviar(p, 0));
+
+/* Si cierran la pestaña con envíos pendientes, un último intento en segundo plano */
+window.addEventListener("pagehide", () => {
+  try {
+    leerCola().forEach(p => {
+      if (navigator.sendBeacon && CONFIG.URL_SCRIPT && !CONFIG.URL_SCRIPT.startsWith("PEGA_AQUI"))
+        navigator.sendBeacon(CONFIG.URL_SCRIPT, new Blob([JSON.stringify(p)], { type:"text/plain;charset=UTF-8" }));
+    });
+  } catch(e){}
+});
+
+/* ---- Formulario ---- */
+function marcar(id, malo){ const el = $(id); if (el) el.classList.toggle("field-err", !!malo); }
+
+$("f").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const nombre = $("nombre").value.replace(/\s+/g, " ").trim();
+  const waRaw = $("whatsapp").value.trim();
+  const wa = normalizarWA(waRaw);
+  const sel = document.querySelector('input[name="interes"]:checked');
+  let e = "", foco = null;
+
+  marcar("nombre", false); marcar("whatsapp", false);
+  if (nombre.length < 3){ e = "Escribe tu nombre completo."; marcar("nombre", true); foco = $("nombre"); }
+  else if (!wa){ e = "Escribe tu WhatsApp con indicativo. Ej: 300 123 4567"; marcar("whatsapp", true); foco = $("whatsapp"); }
+  else if (!sel){ e = "Elige qué te gustaría revisar."; foco = $("choices"); }
+  else if (!$("consent").checked){ e = "Debes autorizar el tratamiento de datos para participar."; foco = $("consent"); }
+
+  $("err").textContent = e;
+  if (e){ if (foco && foco.scrollIntoView) foco.scrollIntoView({ behavior:"smooth", block:"center" }); return; }
+
+  $("btn").disabled = true;
+  const id = nuevoId();
+  const payload = {
+    id: id, nombre: nombre, whatsapp: wa, interes: sel.value, evento: evento,
+    consent: true, hp: $("hp_ref").value, seg: Math.round((Date.now() - t0) / 1000)
+  };
+
+  agregarACola(payload);   // primero se guarda en el celular
+  enviar(payload, 0);      // y se envía en segundo plano (con reintentos)
+
+  $("okTitulo").textContent = "¡Listo, " + nombre.split(" ")[0] + "!";
+  $("tNombre").textContent = nombre;
+  const c = codigoDe(id);
+  $("tCodigo").textContent = c.slice(0,4) + "-" + c.slice(4);
+  $("tMsg").textContent = CONFIG.MENSAJE_FINAL;
+  $("tContacto").textContent = "Un consultor te escribirá por WhatsApp al " + waRaw + ".";
+  $("formCard").classList.add("hidden");
+  $("okCard").classList.remove("hidden");
+  window.scrollTo(0, 0);
+});
+</script>
+</body>
+</html>
