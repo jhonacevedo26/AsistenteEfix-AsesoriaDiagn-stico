@@ -22,6 +22,7 @@
   input[type=text],input[type=tel]{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:12px;font-size:1.05rem;background:#fff}
   input[type=text]:focus,input[type=tel]:focus{outline:none;border-color:var(--accent)}
   .hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+  .wamsg{font-size:.8rem;color:var(--red);font-weight:600;margin-top:4px;min-height:1em}
   .choices{display:grid;gap:8px}
   .choice{display:block;cursor:pointer}
   .choice input{position:absolute;opacity:0;width:1px;height:1px}
@@ -44,13 +45,13 @@
   .ticket{margin:18px 0 8px;padding:16px;border:2px dashed var(--gold);border-radius:14px;background:#fffbea}
   .ticket .n{font-weight:800;color:var(--navy);font-size:1.15rem}
   .ticket .c{font-size:1.6rem;font-weight:800;letter-spacing:3px;color:var(--navy);margin-top:6px}
-  .ticket .m{font-size:.85rem;color:var(--muted);margin-top:8px}
+  .ticket .m{font-size:1.05rem;font-weight:700;color:var(--navy);margin-top:12px;line-height:1.35}
 </style>
 </head>
 <body>
 <header>
   <h1>¡Tu premio te espera! 🎁</h1>
-  <p>Responde 4 datos y obtén una asesoría profesional en finanzas e inversión</p>
+  <p>Responde 4 datos y participa o reclama tu detalle.</p>
 </header>
 
 <main>
@@ -62,6 +63,7 @@
 
       <label class="l" for="whatsapp">WhatsApp (con indicativo)</label>
       <input id="whatsapp" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="Ej: 300 123 4567">
+      <div id="waMsg" class="wamsg" role="alert"></div>
 
       <label class="l" id="lblInteres">¿Qué te gustaría revisar con un consultor?</label>
       <div class="choices" role="radiogroup" aria-labelledby="lblInteres" id="choices">
@@ -104,7 +106,7 @@ const CONFIG = {
   URL_SCRIPT: "https://script.google.com/macros/s/AKfycbwW-QxmXtM0jpqSqWUx98qxQ-MzZqOHLCbPbR8h2KhYvuC4Bw95B9939peP2I5ab7A/exec",   // termina en /exec
   POLITICA_URL: "https://drive.google.com/file/d/1ESvK3CHqmkvtpmnwulsZQFkHqj8BGS3q/view?usp=drive_link",                                    // enlace a tu política de datos (si está vacío, no se muestra el enlace)
   CONSENT_QUIEN: "un consultor",                       // "...para que [un consultor] me contacte con información financiera"
-  MENSAJE_FINAL: "Muestra esta pantalla en el stand para reclamar tu detalle."
+  MENSAJE_FINAL: "Dirígete al stand ubicado en Pabellón Amarillo, número AM14."
 };
 /* ======================================================= */
 
@@ -126,11 +128,46 @@ const enCurso = new Set();
   }
 })();
 
-/* WhatsApp: solo dígitos; si son 10 y empiezan por 3 (celular colombiano) se agrega 57 */
+/* ---- Validador de WhatsApp: revisa el formato real del número, no solo la cantidad de dígitos ----
+   - Colombia: celular de 10 dígitos que empieza por 3 (300-359). Si no trae indicativo, se agrega 57.
+   - Otros países: deben traer indicativo (+34, +52, +1...) y la longitud correcta de ese país.
+   - En todos los casos se descartan números falsos (3333333333, 3000000000, 123456789...).
+   Nota: valida que el número sea posible, no que la persona tenga WhatsApp instalado. */
+const PAISES = { "1":[11], "33":[11], "34":[11], "44":[12], "51":[11], "52":[12,13], "54":[12,13], "55":[12,13],
+  "56":[11], "58":[12], "502":[11], "503":[11], "504":[11], "505":[11], "506":[11], "507":[11],
+  "591":[11], "593":[12], "595":[12], "598":[11,12] };
+
+function parecePatronFalso(s){
+  if (new Set(s).size < 4) return true;            // muy pocos dígitos distintos (3000000000)
+  if (/(\d)\1{5,}/.test(s)) return true;           // 6 o más dígitos iguales seguidos
+  let asc = 1, desc = 1;
+  for (let i = 1; i < s.length; i++){
+    const a = +s[i-1], b = +s[i];
+    asc  = (b === a + 1) ? asc + 1 : 1;
+    desc = (b === a - 1) ? desc + 1 : 1;
+    if (asc >= 9 || desc >= 9) return true;        // 123456789 / 987654321
+  }
+  return false;
+}
+
 function normalizarWA(v){
   let d = String(v || "").replace(/\D/g, "");
-  if (d.length === 10 && d[0] === "3") d = "57" + d;
-  return (d.length >= 8 && d.length <= 15) ? d : "";
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 10 && d[0] === "3") d = "57" + d;           // celular colombiano sin indicativo
+  if (d.length < 10 || d.length > 15 || d[0] === "0") return "";
+
+  if (d.startsWith("57"))                                       // Colombia: solo celulares 3XX XXX XXXX
+    return (/^573[0-5]\d{8}$/.test(d) && !parecePatronFalso(d.slice(2))) ? d : "";
+
+  let cc = "";
+  for (const n of [3, 2, 1]) { if (PAISES[d.slice(0, n)]) { cc = d.slice(0, n); break; } }
+  if (cc){
+    if (!PAISES[cc].includes(d.length)) return "";
+    if (cc === "1" && !/^1[2-9]\d{2}[2-9]\d{6}$/.test(d)) return "";   // EE.UU. / Canadá
+    return parecePatronFalso(d.slice(cc.length)) ? "" : d;
+  }
+  if (d.length < 11) return "";                                  // otro país: debe traer indicativo
+  return parecePatronFalso(d) ? "" : d;
 }
 
 function nuevoId(){
@@ -180,6 +217,19 @@ window.addEventListener("pagehide", () => {
 /* ---- Formulario ---- */
 function marcar(id, malo){ const el = $(id); if (el) el.classList.toggle("field-err", !!malo); }
 
+/* WhatsApp: solo permite números y símbolos de teléfono; avisa al salir del campo si el número no es válido */
+$("whatsapp").addEventListener("input", ev => {
+  ev.target.value = ev.target.value.replace(/[^\d+\s()-]/g, "");
+  marcar("whatsapp", false); $("waMsg").textContent = "";
+});
+$("whatsapp").addEventListener("blur", () => {
+  const v = $("whatsapp").value.trim();
+  if (v && !normalizarWA(v)){
+    marcar("whatsapp", true);
+    $("waMsg").textContent = "Revisa tu número: debe ser un celular válido (ej: 300 123 4567).";
+  }
+});
+
 $("f").addEventListener("submit", ev => {
   ev.preventDefault();
   const nombre = $("nombre").value.replace(/\s+/g, " ").trim();
@@ -190,7 +240,7 @@ $("f").addEventListener("submit", ev => {
 
   marcar("nombre", false); marcar("whatsapp", false);
   if (nombre.length < 3){ e = "Escribe tu nombre completo."; marcar("nombre", true); foco = $("nombre"); }
-  else if (!wa){ e = "Escribe tu WhatsApp con indicativo. Ej: 300 123 4567"; marcar("whatsapp", true); foco = $("whatsapp"); }
+  else if (!wa){ e = "Ese número no parece un celular válido. Escribe tu WhatsApp (ej: 300 123 4567) o con indicativo si es de otro país."; marcar("whatsapp", true); foco = $("whatsapp"); }
   else if (!sel){ e = "Elige qué te gustaría revisar."; foco = $("choices"); }
   else if (!$("consent").checked){ e = "Debes autorizar el tratamiento de datos para participar."; foco = $("consent"); }
 
