@@ -67,6 +67,13 @@
   .ticket .c{font-size:1.6rem;font-weight:800;letter-spacing:3px;color:var(--v700);margin-top:6px}
   .ticket .m{font-size:1.02rem;font-weight:700;color:var(--v900);margin-top:12px;line-height:1.35}
 
+
+  /* ---------- Ruleta ---------- */
+  .wheel-wrap{position:relative;width:100%;max-width:290px;margin:16px auto 6px}
+  .wheel-wrap canvas{display:block;width:100%;height:auto;border-radius:50%;box-shadow:0 0 0 5px var(--oro),0 10px 24px rgba(0,0,0,.35)}
+  .pointer{position:absolute;left:50%;top:-12px;width:0;height:0;margin-left:-14px;z-index:2;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #fff;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+  .ticket .prize{font-size:1.15rem;font-weight:800;color:var(--v900);margin-top:12px;padding:10px;border-radius:10px;background:#fbf3da}
+
   /* ---------- Pie de marca ---------- */
   .pilares-wrap{background:linear-gradient(180deg,var(--v800),var(--v950));padding:22px 14px;margin-top:26px}
   .pilares{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(2,1fr);gap:18px 10px;text-align:center}
@@ -128,10 +135,15 @@
   <section id="okCard" class="card ok hidden">
     <div class="big">🎉</div>
     <h2 id="okTitulo">¡Listo!</h2>
-    <p>Ya estás participando.</p>
+    <p>Ya estás participando. ¡Gira la ruleta y descubre tu premio!</p>
+    <div id="ruletaBox">
+      <div class="wheel-wrap"><div class="pointer"></div><canvas id="rueda" width="580" height="580" aria-label="Ruleta de premios"></canvas></div>
+      <button id="girar" class="btn" type="button">🎡 ¡Girar la ruleta!</button>
+    </div>
     <div class="ticket">
       <div class="n" id="tNombre"></div>
       <div class="c" id="tCodigo"></div>
+      <div class="prize hidden" id="tPremio"></div>
       <div class="m" id="tMsg"></div>
     </div>
     <p id="tContacto"></p>
@@ -157,7 +169,18 @@ const CONFIG = {
   URL_SCRIPT: "https://script.google.com/macros/s/AKfycbwW-QxmXtM0jpqSqWUx98qxQ-MzZqOHLCbPbR8h2KhYvuC4Bw95B9939peP2I5ab7A/exec",   // termina en /exec
   POLITICA_URL: "https://drive.google.com/file/d/1ESvK3CHqmkvtpmnwulsZQFkHqj8BGS3q/view?usp=drive_link",                                    // enlace a tu política de datos (si está vacío, no se muestra el enlace)
   CONSENT_QUIEN: "un consultor",                       // "...para que [un consultor] me contacte con información financiera"
-  MENSAJE_FINAL: "Dirígete al stand ubicado en Pabellón Amarillo, número AM14."
+  MENSAJE_FINAL: "Dirígete al stand ubicado en Pabellón Amarillo, número AM14.",
+  /* Casillas de la ruleta, en orden (sentido del reloj desde arriba).
+     k = clave que se guarda en la hoja (no cambiar) · txt = texto en la ruleta
+     peso = probabilidad relativa (más alto = sale más; 0 = nunca sale) · res = mensaje al ganar */
+  RULETA: [
+    { k:"nada",       txt:["Sigue","intentando"],       peso:10, res:"Esta vez no salió premio, ¡pero pasa por el stand igual!" },
+    { k:"asesoria",   txt:["Asesoría","gratuita"],      peso:30, res:"🎁 Ganaste una asesoría gratuita" },
+    { k:"obsequio",   txt:["Ganaste un","obsequio"],    peso:10, res:"🎁 ¡Ganaste un obsequio!" },
+    { k:"patrimonial",txt:["Asesoría","patrimonial"],   peso:20, res:"🎁 Ganaste una asesoría patrimonial" },
+    { k:"brecha",     txt:["Revisión brecha","pensional"], peso:20, res:"🎁 Ganaste una revisión de tu brecha pensional" },
+    { k:"obsequio",   txt:["Ganaste un","obsequio"],    peso:10, res:"🎁 ¡Ganaste un obsequio!" }
+  ]
 };
 /* ======================================================= */
 
@@ -265,6 +288,59 @@ window.addEventListener("pagehide", () => {
   } catch(e){}
 });
 
+
+/* ---- Ruleta ---- */
+const COLORES = [["#0d5a40","#fff"],["#d4a437","#062a1f"],["#2a8650","#fff"],["#e8c766","#062a1f"]];
+let premioIdx = 0, girando = false, yaGiro = false;
+
+function elegirPremio(){
+  const pesos = CONFIG.RULETA.map(x => Math.max(0, x.peso));
+  let r = Math.random() * pesos.reduce((a,b) => a + b, 0);
+  for (let i = 0; i < pesos.length; i++){ if ((r -= pesos[i]) < 0) return i; }
+  return 0;
+}
+
+function dibujarRuleta(){
+  const cv = $("rueda"), ctx = cv.getContext("2d"), W = cv.width, c = W / 2, R = c - 4;
+  const n = CONFIG.RULETA.length, seg = Math.PI * 2 / n;
+  ctx.clearRect(0, 0, W, W);
+  CONFIG.RULETA.forEach((it, i) => {
+    const a0 = -Math.PI / 2 + i * seg, col = COLORES[i % COLORES.length];
+    ctx.beginPath(); ctx.moveTo(c, c); ctx.arc(c, c, R, a0, a0 + seg); ctx.closePath();
+    ctx.fillStyle = col[0]; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.stroke();
+    ctx.save(); ctx.translate(c, c); ctx.rotate(a0 + seg / 2);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillStyle = col[1];
+    ctx.font = "800 30px Montserrat, Arial, sans-serif";
+    const l = it.txt.length;
+    it.txt.forEach((t, j) => ctx.fillText(t, R - 24, (j - (l - 1) / 2) * 34));
+    ctx.restore();
+  });
+  ctx.beginPath(); ctx.arc(c, c, 34, 0, Math.PI * 2);
+  ctx.fillStyle = "#062a1f"; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = "#d4a437"; ctx.stroke();
+}
+
+function mostrarPremio(){
+  const it = CONFIG.RULETA[premioIdx];
+  const t = $("tPremio"); t.textContent = it.res; t.classList.remove("hidden");
+  $("ruletaBox").querySelector("#girar").classList.add("hidden");
+  yaGiro = true; girando = false;
+}
+
+$("girar").addEventListener("click", () => {
+  if (girando || yaGiro) return;
+  girando = true; $("girar").disabled = true;
+  const n = CONFIG.RULETA.length, seg = 360 / n, cv = $("rueda");
+  const reducir = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const azar = (Math.random() - .5) * seg * .7;
+  const destino = 360 * 6 - (premioIdx * seg + seg / 2 + azar);
+  const dur = reducir ? 1 : 5;
+  cv.style.transition = "transform " + dur + "s cubic-bezier(.15,.6,.1,1)";
+  cv.style.transform = "rotate(" + destino + "deg)";
+  setTimeout(mostrarPremio, dur * 1000 + 250);
+});
+dibujarRuleta();
+
 /* ---- Formulario ---- */
 function marcar(id, malo){ const el = $(id); if (el) el.classList.toggle("field-err", !!malo); }
 
@@ -299,9 +375,11 @@ $("f").addEventListener("submit", ev => {
   if (e){ if (foco && foco.scrollIntoView) foco.scrollIntoView({ behavior:"smooth", block:"center" }); return; }
 
   $("btn").disabled = true;
+  premioIdx = elegirPremio();
   const id = nuevoId();
   const payload = {
     id: id, nombre: nombre, whatsapp: wa, interes: sel.value, evento: evento,
+    premio: CONFIG.RULETA[premioIdx].k,
     consent: true, hp: $("hp_ref").value, seg: Math.round((Date.now() - t0) / 1000)
   };
 
